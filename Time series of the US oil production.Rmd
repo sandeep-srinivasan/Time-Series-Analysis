@@ -1,0 +1,515 @@
+---
+title: "Time series of the US oil production.Rmd"
+output:
+  word_document: default
+  html_notebook: default
+---
+
+Question 1.  
+
+(a) Produce a time series plot of the data, and then describe the features of the U.S. oil production series.
+
+```{r}
+oil =  scan("C:/Users/Sandeep/Desktop/US_oil_production.txt")
+years = seq(from=1980, by=1/12, length=length(oil))
+```
+
+```{r}
+plot(years, oil, type="l",
+     xlab="years", ylab="monthly U.S. oil production (thousands of barrels)")
+```
+
+The plot of monthly U.S. production of crude oil  vs years recorded from Jan 1980 to Dec 2009 shows,
+i. a gradually increasing trend upto 1985 and a decreasing trend thereafter
+ii. the variance is uniform
+iii. there is a seasonality component during each year
+iv. there are no outliers
+v. there are abrupt changes in behaviour at few occassions.
+
+(b) Estimate the trend using a moving average of the data calculated over 5 year windows (60 time
+points). Make sure that you produce estimates of the trend at the start and end of the series.
+Produce a plot of the estimated trend, superimposed over the original data, and describe it in words.
+
+## let us choose the period to be d=60 months
+
+```{r}
+d <- 60
+```
+
+## half.d is d/2 
+
+```{r}
+half.d <- d/2
+```
+
+## smooth the temp time series using the 'filter' command
+
+```{r}
+our.filter <- c(0.5, rep(1,d-1), 0.5)/d
+```
+
+## display 'our.filter' to see the values makes sense!
+
+```{r}
+our.filter
+```
+
+## 'n' is the length of time series
+
+```{r}
+n <- length(oil)
+```
+
+## We will not filter the variable 'oil',
+## but a new variable called 'longer.oil'
+
+```{r}
+longer.oil <- c(oil[(d/2):1], oil, oil[n:(n-d/2+1)])
+length(longer.oil)
+```
+
+## now filter 'longer.oil'.
+
+```{r}
+oil.MA <- filter(longer.oil, our.filter)[(d/2+1):(d/2+n)]
+length(oil.MA)
+```
+
+## plot the time series and overlay the smooth
+
+```{r}
+plot(years, oil, type="l",
+     xlab="years", ylab="monthly U.S. oil production (thousands of barrels)")
+lines(years, oil.MA, type="l", lwd=2)
+```
+
+The plot of the estimated trend superimposed over the original data is as shown. The trend estimated using a moving average of the data calculated over 5 year windows shows that the data is less sensitive to changes in oil production. In other words, the estimated trend is more smoothed out since the time span is longer. 
+
+
+(c) Follow the second step of the classical decomposition algorithm to produce an estimate of the seasonal
+component (assuming d = 12). Present the estimates in a table (rounded to the nearest 1000 barrels),
+and produce a graph of these estimates.
+
+## ======================================================================
+## ** Step 2 of the algorithm **
+## Estimate the seasonal component.
+## ======================================================================
+
+## calculate and plot the residuals of the smooth.
+
+```{r}
+oil.MA.resids <- oil - oil.MA
+```
+
+## plot the time series (first plot)
+
+```{r}
+plot(years, oil.MA.resids, type="l",
+     xlab="years", ylab="residuals of the smooth")
+```
+
+## we define a variable to hold the names of the months
+
+```{r}
+months <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+```
+
+## Now we need to estimate the average seasonal components.
+## There should be 'd=12' of them.
+## We first form 'temp.MA.resids' into a matrix with 'd' rows.
+
+```{r}
+oil.matrix <- matrix(oil.MA.resids, nrow=12)
+dim(oil.matrix)
+```
+
+## create the plot of temperatures by month (second plot)
+## in a panel of size 3 rows by 4 columns.
+
+```{r}
+par(mfrow=c(3,4)) 
+for (m in 1:12) {
+  plot(1980:2009, oil.matrix[m,], type="l",
+       xlab="years", ylab="oil", main=months[m])
+  abline(h=mean(oil.matrix[m,]), lty=2)
+}
+```
+
+## now average across the years to get the 's.hat.stars'
+
+```{r}
+s.hat.stars <- rowMeans(oil.matrix)
+```
+
+## The estimates in a table (rounded to the nearest 1000 barrels) are,
+
+```{r}
+s.hat.stars_rounded = round(s.hat.stars, digits = -3)
+s.hat.stars_rounded
+```
+
+
+## plot the 's.hat.stars_rounded', without the x-axis
+
+```{r}
+par(mfrow=c(1,1))
+plot(s.hat.stars_rounded, type="l", xaxt="n")
+```
+
+## Now  we'll label the x-axis
+
+```{r}
+par(mfrow=c(1,1))
+plot(s.hat.stars_rounded, type="l", xaxt="n")
+axis(side=1, at=1:12, labels=months)
+```
+
+## now subtract off the mean of the 's.hat.stars_rounded' so that we have a
+## seasonal component that adds up to zero (has average zero).
+
+```{r}
+s.hat <- s.hat.stars_rounded - mean(s.hat.stars_rounded)
+```
+
+## plot the 's.hat', without the x-axis
+
+```{r}
+plot(s.hat, type="l", xaxt="n",
+     xlab="month", ylab="estimate of seasonal component")
+```
+
+## now we'll label the x-axis
+
+```{r}
+plot(s.hat, type="l", xaxt="n",
+     xlab="month", ylab="estimate of seasonal component")
+axis(side=1, at=1:12, labels=months)
+```
+
+## remove the seasonality
+
+```{r}
+deseasonalized <- oil - s.hat
+```
+
+## plot the deseasonalized time series.
+
+```{r}
+plot(years, deseasonalized, type="l",
+     xlab="years", ylab="deseasonalized monthly oil productiom")
+```
+
+(d) Now calculate the number of 1000 barrels per day using the following R code:
+
+days.per.month <- c(31,28.25,31,30,31,30,31,31,30,31,30,31)
+per.day <- oil / days.per.month
+
+Redo steps (b) and (c) for these per day oil production numbers, showing that the trend is basically
+the same shape (suitably scaled), but that the pattern of the estimated seasonality is dierent.
+Describe the seasonality in words.
+
+```{r}
+days.per.month <- c(31,28.25,31,30,31,30,31,31,30,31,30,31)
+per.day <- oil / days.per.month
+```
+
+```{r}
+days.per.month
+```
+
+
+## let us choose the period to be d=60 months
+
+```{r}
+d <- 60
+```
+
+## half.d is d/2 
+
+```{r}
+half.d <- d/2
+```
+
+## smooth the temp time series using the 'filter' command
+
+```{r}
+our.filter <- c(0.5, rep(1,d-1), 0.5)/d
+```
+
+## display 'our.filter' to see the values makes sense!
+
+```{r}
+our.filter
+```
+
+## 'n' is the length of time series
+
+```{r}
+n <- length(per.day)
+```
+
+## We will not filter the variable 'oil',
+## but a new variable called 'longer.oil'
+
+```{r}
+longer.per.day <- c(per.day[(d/2):1], per.day, per.day[n:(n-d/2+1)])
+length(longer.per.day)
+```
+
+## now filter 'longer.per.day'.
+
+```{r}
+per.day.MA <- filter(longer.per.day, our.filter)[(d/2+1):(d/2+n)]
+length(per.day.MA)
+```
+
+## plot the time series and overlay the smooth
+
+```{r}
+plot(years, per.day, type="l",
+     xlab="years", ylab="monthly U.S. oil production (thousands of barrels)")
+lines(years, per.day.MA, type="l", lwd=2)
+```
+
+## ======================================================================
+## ** Step 2 of the algorithm **
+## Estimate the seasonal component.
+## ======================================================================
+
+## calculate and plot the residuals of the smooth.
+
+```{r}
+per.day.MA.resids <- per.day - per.day.MA
+```
+
+## plot the time series (first plot)
+
+```{r}
+plot(years, per.day.MA.resids, type="l",
+     xlab="years", ylab="residuals of the smooth")
+```
+
+## we define a variable to hold the names of the months
+
+```{r}
+months <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+```
+
+## Now we need to estimate the average seasonal components.
+## There should be 'd=12' of them.
+## We first form 'temp.MA.resids' into a matrix with 'd' rows.
+
+```{r}
+per.day.matrix <- matrix(per.day.MA.resids, nrow=12)
+dim(per.day.matrix)
+```
+
+## create the plot of temperatures by month (second plot)
+## in a panel of size 3 rows by 4 columns.
+
+```{r}
+par(mfrow=c(3,4)) 
+for (m in 1:12) {
+  plot(1980:2009, per.day.matrix[m,], type="l",
+       xlab="years", ylab="per.day", main=months[m])
+  abline(h=mean(per.day.matrix[m,]), lty=2)
+}
+```
+
+## now average across the years to get the 's.hat.stars'
+
+```{r}
+s.hat.stars <- rowMeans(per.day.matrix)
+```
+
+## plot the 's.hat.stars', without the x-axis
+
+```{r}
+par(mfrow=c(1,1))
+plot(s.hat.stars, type="l", xaxt="n")
+```
+
+## Now  we'll label the x-axis
+
+```{r}
+par(mfrow=c(1,1))
+plot(s.hat.stars, type="l", xaxt="n")
+axis(side=1, at=1:12, labels=months)
+```
+
+## now subtract off the mean of the 's.hat.stars' so that we have a
+## seasonal component that adds up to zero (has average zero).
+
+```{r}
+s.hat <- s.hat.stars - mean(s.hat.stars)
+```
+
+## plot the 's.hat', without the x-axis
+
+```{r}
+plot(s.hat, type="l", xaxt="n",
+     xlab="month", ylab="estimate of seasonal component")
+```
+
+## now we'll label the x-axis
+
+```{r}
+plot(s.hat, type="l", xaxt="n",
+     xlab="month", ylab="estimate of seasonal component")
+axis(side=1, at=1:12, labels=months)
+```
+
+The per day estimated seasonality over the course of different months shows that the seasonality is high for February and the seasonality is the least for September. The per day estimated seasonality is obtained by dividing the monthly seasonality with the respective number of days in the month and is a better reflection of the seasonality unlike the monthly estimated seasonality where the production will be higher in those months with more days.
+
+(e) Summarize the detrended and deseasonalized per day oil production series using time series plots,
+the sample ACF, the sample PACF, and a normal Q-Q plot (Show 60 lags for the ACF and PACF
+plots). Calculate the Ljung-Box statistic also based on 60 lags. Describe these summaries in words,
+and pick the most appropriate, but simple, ARMA model for the series, providing reasons for the
+choice of model that you make.
+
+## remove the seasonality and trend
+
+```{r}
+deseasonalized <- per.day - per.day.MA - s.hat
+```
+
+## plot the deseasonalized time series.
+
+```{r}
+plot(years, deseasonalized, type="l",
+     xlab="years", ylab="deseasonalized daily oil production")
+```
+
+## We now fit a quadratic line model to the data.
+
+```{r}
+lm.deseasonalized <- lm(deseasonalized ~ years + I(years^2))
+```
+
+## Summarize the model obtained.
+
+```{r}
+summary(lm.deseasonalized)
+```
+
+## Plot the series and the estimated regression line.
+
+```{r}
+plot(years, deseasonalized, type="l",
+     xlab="years", ylab="deseasonalized daily oil production")
+lines(years, fitted(lm.deseasonalized), lty=2)
+```
+
+## calculate the residuals
+
+```{r}
+resids <- resid(lm.deseasonalized)
+```
+
+## Plot the residual series with a horizontal line at y=0.
+
+```{r}
+plot(years, resids, type="l", xlab="years", ylab="estimate of noise process")
+abline(h=0, lty=2)
+```
+
+## plot the sample ACF.
+
+```{r}
+acf(resids, main="", lag(60), ylab="sample ACF")
+```
+
+Sample ACF looks like a sine wave, so it follows a AR(p) process.
+
+#Plot the sample PACF.
+
+```{r}
+pacf(resids, main="", lag(60), ylab="sample PACF")
+```
+
+Sample PACF looks like a sine wave, so it follows a MA(q) process.
+
+So, the overall model is ARMA(1,1).
+
+## draw a Q-Q plot of the residuals.
+
+```{r}
+qqnorm(resids, xlab="z-scores", ylab="estimate of noise process", main="")
+qqline(resids)
+```
+
+From the QQ plot, apart from the few outliers in the data because of Hurricane Katrina in 2005 and lack of demand due to the credit crunch in 2008, the residuals seems doesn't fit the data well and departs from normality.
+
+## carry out the Ljung-Box test
+
+```{r}
+Box.test(resids, 60, type="Ljung-Box")
+```
+
+The p-value from the Ljung-Box test is very less i.e., p << alpha, so we have sufficient evidence to reject the null hypothesis and conclude the residuals are not IID noise.  
+
+
+(f) Fit your ARMA model using the arima function. Write down the estimated model, and produce
+95% confidence intervals for the model parameters. Interpret your confidence intervals.
+
+```{r}
+arma.fit <- arima(resids, order=c(1,0,1))
+arma.fit
+```
+
+The estimated model is,
+
+$X_t - 0.7953 X_{t-1} = Z_t - 0.1957 Z_{t-1}$ 
+
+#95% CI for phi
+
+```{r}
+c(0.7953 - 1.96*0.0495, 0.7953 + 1.96*0.0495)
+```
+
+The 95% CI for phi does not contain a zero in it, so AR(1) process fits the model well.
+ 
+#95% CI for theta
+
+```{r}
+c(-0.1957 - 1.96*0.0853, -0.1957 + 1.96*0.0853)
+```
+
+The 95% CI for phi does not contain a zero in it, so MA(1) process fits the model well.
+
+The 95% CI suggests that ARMA(1,1) process fits the model well.
+
+
+(g) For your time series model, produce summaries of the time series residuals. Diagnose the fit of your
+model using these summaries.
+
+```{r}
+summary(arma.fit$residuals)
+```
+
+## summarize the residuals of the ARMA(1,1) model.
+
+```{r}
+par(mfrow=c(2,2))
+plot(years, arma.fit$residuals, type="l", xlab="years", ylab="estimate of noise process")
+abline(h=0, lty=2)
+qqnorm(arma.fit$residuals, xlab="z-scores", ylab="estimate of noise process", main="")
+qqline(resids)
+acf(arma.fit$residuals, main="", lag(60), ylab="sample ACF")
+pacf(arma.fit$residuals, main="", lag(60), ylab="sample PACF")
+```
+
+From the summaries of residuals, it can be seen that,
+i. The residuals apart from few outliers or abnormal conditions resulting from Hurricane Katrina in 2005 and the lack in demand due to the credit crunch in 2008, seems to have zero mean and uniform variance from the plot of the residuals vs Time.
+ii. The residuals apart from the few outliers as same as above, look to satisy the condition of normality from the QQ plot.
+iii. The sample ACF and PACF shows that the outliers follow sinusoidal pattern. And even from these plots, it can be seen that the residuals satisfy the conditions of being an IID noise. 
+
+## carry out the Ljung-Box test
+
+```{r}
+Box.test(arma.fit$residuals, 60, type="Ljung-Box")
+```
+
+The p-value from the Ljung-Box test is high i.e., p > alpha, so we don't have sufficient evidence to reject the null hypothesis and conclude the residuals of ARMA model are IID noise.

@@ -1,0 +1,244 @@
+---
+title: "Time series of the wind speed"
+output:
+  word_document: default
+  html_notebook: default
+---
+
+In studying the progression of Hurricane Wilma in October 2005, wind speeds in miles per hour were recorded at different monitoring stations across Florida. Here we analyze a time series of the wind speed (excluding wind gusts), recorded every twenty minutes at an airport in Fort Lauderdale. We analyze the wind speeds on the square root scale.
+
+Here is the dataset of wind speeds after a square root transformation.
+
+```{r}
+winds <- c(2.90, 3.06, 3.62, 3.38, 3.43, 3.07, 3.13, 3.27, 3.35, 3.21, 3.26,
+           3.51, 3.21, 2.83, 2.59, 2.62, 2.88, 2.75, 2.52, 2.68, 3.13, 3.22,
+           3.60, 3.47, 3.30, 3.33, 3.38, 3.27, 3.32, 3.37, 4.04, 3.94, 3.74,
+           3.77, 3.79, 3.80, 3.96, 3.87, 3.68, 4.01, 4.26, 4.16, 4.32, 3.93,
+           3.86, 3.79, 3.89, 4.04, 3.46, 3.26, 3.17, 3.41, 3.67, 3.68, 3.88,
+           3.84, 4.05, 4.10, 3.59, 3.75, 4.00, 3.67, 4.02, 4.35, 4.09, 4.03,
+           3.99, 4.13, 4.15, 4.28, 4.51, 4.54, 4.44, 4.51, 4.50, 4.47, 4.52,
+           4.43, 4.93, 5.15, 4.90, 5.09, 4.95, 5.24, 5.67, 5.69, 6.12, 6.30,
+           6.25, 6.47, 6.63, 6.48, 6.41, 6.58, 6.97, 7.62, 8.03, 7.98, 7.67,
+           7.26, 7.51, 7.65, 7.57, 7.50, 7.86, 7.85, 7.27, 6.77, 6.81, 6.83,
+           6.64, 6.49, 6.27, 6.07, 5.96, 5.64, 5.52, 5.45, 5.37, 5.18, 4.89,
+           4.53, 4.31, 4.37, 4.41, 4.54, 4.68, 4.80, 4.59, 4.42, 4.14, 4.00,
+           4.17, 3.95, 3.97, 3.95, 3.89, 3.97)
+```
+
+Create the 'hours' variable.
+
+```{r}
+hours <- seq(from=0, by=1/3, length=length(winds))
+```
+
+plot the time series
+
+```{r}
+plot(hours, winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="square root of wind speed")
+```
+Part (a)
+Why are wind speeds shown on the square root scale?
+
+The wind speens are on the square root scale so as to accomplish a proper spread of the data and to achieve homoskedasticity.
+
+Part (b) Summarize the plot of the time series - what features of the data are present? (refer to the class notes for hints on what we are looking for).
+There seems to be a gradually increasing trend upto a point, afterwhich the trend increases swiftly and falls down almost at the same rate after a point of time.
+The variance seems to be uniform.
+There seems to be no presence of seasonality.
+There is abrupt changes in behaviour at certain points.
+There are no outliers.
+
+Now fit a polynomial model to the data using least squares.
+```{r}
+lm.winds <- lm(winds ~ hours + I(hours^2) + I(hours^3))
+```
+
+Summarize the model obtained.
+```{r}
+summary(lm.winds)
+```
+Plot the series and the regression line.
+```{r}
+plot(hours, winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="square root of wind speed")
+lines(hours, fitted(lm.winds))
+```
+Plot the residual series with a horizontal line at y=0.
+```{r}
+plot(hours, resid(lm.winds), type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="residuals")
+abline(h=0)
+```
+
+Part (c)
+What is the equation of the line? How well does the model seem to fit?
+
+The equation of the line is,
+y = 3.934e+00 - 2.973e-01 x + 2.412e-02 x^2 - 3.911e-04 x^3 
+
+Based on the time series plot and the residuals lot, it can be seen that the cubic model seems to fit the model well.
+
+plot the acf function of the residuals
+```{r}
+acf(resid(lm.winds), lag.max=60)
+```
+Part (d)
+What do you conclude from the plots of the sample ACF?
+From the sample ACF plot, we can see that for a lot of lags, the ACF lies outside the 95% Confidence Interval boundary and hence we can conclude that it is not IID noise.
+
+Difference the time series
+```{r}
+diff.winds <- diff(winds)
+```
+
+Plot the differenced series, correcting the time scale.
+```{r}
+plot(hours[-1], diff.winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="1st diff. of sqrt wind speed")
+```
+plot the acf function of the differenced series
+```{r}
+acf(diff.winds)
+```
+Part (e)
+Summarize the plot of the differenced series, and associated plots of the sample autocorrelation function.  Compare with part (d).
+
+From the differenced time series graph for lag=1, we see that the mean can be almost 0 and the variance is uniform. Also from the sample correlation plot, we can see that apart for just three lags, the ACF of all the lags lies within the 95% CI interval boundary and hence it fits the model well and can be concluded to be IID noise in contrast to that in part (d).
+
+We difference the time series again!
+```{r}
+diff2.winds <- diff(diff.winds)
+```
+Plot the twice differenced series, again correcting the time scale.
+```{r}
+plot(hours[-(1:2)], diff2.winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="2nd diff. of sqrt wind speed")
+```
+plot the acf function of the twice differenced series.
+```{r}
+acf(diff2.winds)
+```
+
+Part (f)
+Summarize the plot of the 2nd differenced series, and associated plots of the sample autocorrelation function.  Compare with part (e).
+
+From the 2nd differenced time series graph for lag=2, we see that the mean can be almost 0 and the variance is uniform. Also from the sample correlation plot, we can see that apart for just two lags, the ACF of all the lags lies within the 95% CI interval boundary and hence it fits the model well and can be concluded to be IID noise. Since only ACF of two lags is outside the CI, it fits the model better than that of part (e).
+
+Finally we will smooth the time series using a simple MA(value.of.q) filter.  (We cannot use the variable 'q' as that is the exit function in R.)
+
+set the value of q.
+```{r}
+value.of.q <- 1
+```
+
+set the filter length
+```{r}
+filter.len <- 2*value.of.q+1
+```
+
+the MA filter is 'filter len' repetitions of the value 1/'filter.len'.
+```{r}
+MA.filter <- rep(1/filter.len, filter.len)
+```
+
+filter (smooth) the time series 'winds' with the MA.filter, and put the result in 'MA.winds'.
+```{r}
+MA.winds <- filter(winds, MA.filter)
+```
+
+Plot the smoothed series
+```{r}
+plot(MA.winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="smoothed sqrt of wind speed")
+```
+Part (g)
+Summarize the plot of the smoothed series.  Now produce different plots of the smoothed series, by varying the 'value.of.q'. Try to explain what effect 'value.of.q' has on smoothing the time series.
+
+The plot of smoothed series of q=1 looks very similar to the time series graph without smoothing and has all the properties and summaries similar to that of the time series graph without smoothing. The difference is that the smoothed graph produces better curves and hence this curve can be fit better than the non smoothed curve in a model.
+
+set the value of q.
+```{r}
+value.of.q <- 2
+```
+
+set the filter length
+```{r}
+filter.len <- 2*value.of.q+1
+```
+
+the MA filter is 'filter len' repetitions of the value 1/'filter.len'.
+```{r}
+MA.filter <- rep(1/filter.len, filter.len)
+```
+
+filter (smooth) the time series 'winds' with the MA.filter, and put the result in 'MA.winds'.
+```{r}
+MA.winds <- filter(winds, MA.filter)
+```
+
+Plot the smoothed series
+```{r}
+plot(MA.winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="smoothed sqrt of wind speed")
+```
+set the value of q.
+```{r}
+value.of.q <- 10
+```
+
+set the filter length
+```{r}
+filter.len <- 2*value.of.q+1
+```
+
+the MA filter is 'filter len' repetitions of the value 1/'filter.len'.
+```{r}
+MA.filter <- rep(1/filter.len, filter.len)
+```
+
+filter (smooth) the time series 'winds' with the MA.filter, and put the result in 'MA.winds'.
+```{r}
+MA.winds <- filter(winds, MA.filter)
+```
+
+Plot the smoothed series
+```{r}
+plot(MA.winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="smoothed sqrt of wind speed")
+```
+set the value of q.
+```{r}
+value.of.q <- 50
+```
+
+set the filter length
+```{r}
+filter.len <- 2*value.of.q+1
+```
+
+the MA filter is 'filter len' repetitions of the value 1/'filter.len'.
+```{r}
+MA.filter <- rep(1/filter.len, filter.len)
+```
+
+filter (smooth) the time series 'winds' with the MA.filter, and put the result in 'MA.winds'.
+```{r}
+MA.winds <- filter(winds, MA.filter)
+```
+
+Plot the smoothed series
+```{r}
+plot(MA.winds, type="l",
+     xlab="hours since midnight, 23 Oct 2005",
+     ylab="smoothed sqrt of wind speed")
+```
+We see from the graphs that increasing the value of 'q' increases the smoothing effect and we get a better time series curve.
